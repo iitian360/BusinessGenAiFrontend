@@ -15,21 +15,23 @@ vi.mock('../services/postService', () => ({
   }
 }));
 
-// Mock localStorage
-const mockLocalStorage = {
-  getItem: vi.fn(),
-  setItem: vi.fn(),
-  removeItem: vi.fn(),
-};
-Object.defineProperty(window, 'localStorage', {
-  value: mockLocalStorage,
-  writable: true,
+vi.mock('../services/cookieService', () => {
+  return {
+    cookieService: {
+      getCookie: vi.fn(),
+      setCookie: vi.fn(),
+      deleteCookie: vi.fn(),
+      clearAuthCookies: vi.fn(),
+    }
+  };
 });
 
 describe('usePosts Hook', () => {
+  let cookieService;
   beforeEach(() => {
     vi.clearAllMocks();
-    mockLocalStorage.getItem.mockReturnValue(JSON.stringify({ id: 'user-1' }));
+    cookieService = require('../services/cookieService').cookieService;
+    cookieService.getCookie = vi.fn().mockReturnValue(JSON.stringify({ id: 'user-1' }));
   });
 
   test('loads posts successfully', async () => {

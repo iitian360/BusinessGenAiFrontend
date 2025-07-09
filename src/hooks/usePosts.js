@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { postService } from '../services/postService';
+import { cookieService } from '../services/cookieService';
 import toast from 'react-hot-toast';
 
 export const usePosts = () => {
@@ -19,7 +20,8 @@ export const usePosts = () => {
       setPosts(fetchedPosts);
 
       // Set liked posts
-      const user = JSON.parse(localStorage.getItem('user'));
+      const userCookie = cookieService.getCookie('user');
+      const user = userCookie ? JSON.parse(userCookie) : null;
       const likedSet = new Set();
       fetchedPosts.forEach(post => {
         if (user && post.likedBy.includes(user.id)) {
