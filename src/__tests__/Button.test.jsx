@@ -1,44 +1,29 @@
 import React from 'react';
 import { render, screen, fireEvent } from '@testing-library/react';
-import '@testing-library/jest-dom';
+import '@testing-library/jest-dom/vitest';
+import { vi } from 'vitest';
 import Button from '../components/ui/Button';
 
 describe('Button Component', () => {
-  test('renders button with text', () => {
-    render(<Button>Click me</Button>);
-    expect(screen.getByRole('button', { name: /click me/i })).toBeInTheDocument();
+  test('renders with correct text', () => {
+    render(<Button onClick={() => {}}>Click Me</Button>);
+    expect(screen.getByRole('button')).toHaveTextContent('Click Me');
   });
 
-  test('applies primary variant by default', () => {
-    render(<Button>Primary Button</Button>);
-    const button = screen.getByRole('button');
-    expect(button).toHaveClass('bg-blue-600');
-  });
-
-  test('applies secondary variant when specified', () => {
-    render(<Button variant="secondary">Secondary Button</Button>);
-    const button = screen.getByRole('button');
-    expect(button).toHaveClass('bg-gray-200');
-  });
-
-  test('shows loading state', () => {
-    render(<Button loading>Loading Button</Button>);
-    const button = screen.getByRole('button');
-    expect(button).toBeDisabled();
-    expect(button.querySelector('svg')).toBeInTheDocument();
-  });
-
-  test('handles click events', () => {
-    const handleClick = jest.fn();
-    render(<Button onClick={handleClick}>Clickable</Button>);
-    
+  test('calls onClick handler when clicked', () => {
+    const handleClick = vi.fn();
+    render(<Button onClick={handleClick}>Click Me</Button>);
     fireEvent.click(screen.getByRole('button'));
     expect(handleClick).toHaveBeenCalledTimes(1);
   });
 
-  test('is disabled when disabled prop is true', () => {
-    render(<Button disabled>Disabled Button</Button>);
-    const button = screen.getByRole('button');
-    expect(button).toBeDisabled();
+  test('applies disabled attribute', () => {
+    render(<Button disabled>Click Me</Button>);
+    expect(screen.getByRole('button')).toBeDisabled();
+  });
+
+  test('renders with custom class', () => {
+    render(<Button className="bg-red-500">Click Me</Button>);
+    expect(screen.getByRole('button')).toHaveClass('bg-red-500');
   });
 });

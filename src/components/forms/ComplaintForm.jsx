@@ -37,6 +37,7 @@ const ComplaintForm = ({ onSubmit, loading }) => {
 
       <form onSubmit={handleSubmit(handleFormSubmit)} className="w-full md:w-1/2 space-y-6">
         <Input
+          id="orderId"
           label="Order ID"
           placeholder="e.g., ORD-12345"
           required
@@ -45,10 +46,11 @@ const ComplaintForm = ({ onSubmit, loading }) => {
         />
 
         <div className="space-y-1">
-          <label className="block text-sm font-medium text-gray-700">
+          <label htmlFor="productType" className="block text-sm font-medium text-gray-700">
             Product Type <span className="text-red-500 ml-1">*</span>
           </label>
           <select
+            id="productType"
             className={`w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
               errors.productType ? 'border-red-500 focus:ring-red-500 focus:border-red-500' : ''
             }`}
@@ -67,10 +69,11 @@ const ComplaintForm = ({ onSubmit, loading }) => {
         </div>
 
         <div className="space-y-1">
-          <label className="block text-sm font-medium text-gray-700">
+          <label htmlFor="description" className="block text-sm font-medium text-gray-700">
             Description <span className="text-red-500 ml-1">*</span>
           </label>
           <textarea
+            id="description"
             rows="4"
             placeholder="Please describe your issue in detail..."
             className={`w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${

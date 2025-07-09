@@ -22,6 +22,7 @@ const RegisterForm = ({ onSubmit, loading }) => {
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
       <Input
+        id="name"
         label="Full Name"
         type="text"
         required
@@ -30,6 +31,7 @@ const RegisterForm = ({ onSubmit, loading }) => {
       />
 
       <Input
+        id="email"
         label="Email"
         type="email"
         required
@@ -38,6 +40,7 @@ const RegisterForm = ({ onSubmit, loading }) => {
       />
 
       <Input
+        id="password"
         label="Password"
         type="password"
         required
@@ -46,6 +49,7 @@ const RegisterForm = ({ onSubmit, loading }) => {
       />
 
       <Input
+        id="confirmPassword"
         label="Confirm Password"
         type="password"
         required

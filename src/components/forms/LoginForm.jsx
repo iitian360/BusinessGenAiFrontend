@@ -15,17 +15,21 @@ const LoginForm = ({ onSubmit, loading }) => {
     resolver: yupResolver(schema)
   });
 
+
+
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
       <Input
+        id="email"
         label="Email"
-        type="email"
+        type="text"
         required
         error={errors.email?.message}
         {...register('email')}
       />
 
       <Input
+        id="password"
         label="Password"
         type="password"
         required
