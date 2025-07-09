@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { authService } from '../services/authService';
+import { cookieService } from '../services/cookieService';
 import toast from 'react-hot-toast';
 
 export const useAuth = () => {
@@ -8,13 +9,19 @@ export const useAuth = () => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Load user and token from localStorage on initial mount
-    const storedUser = localStorage.getItem('user');
-    const storedToken = localStorage.getItem('token');
+    // Load user from cookies on initial mount
+    // The token is now an HTTP-only cookie set by the backend
+    const storedUser = cookieService.getCookie('user');
 
-    if (storedUser && storedToken) {
-      setUser(JSON.parse(storedUser));
-      setToken(storedToken);
+    if (storedUser) {
+      try {
+        const user = JSON.parse(storedUser);
+        setUser(user);
+        setToken('authenticated'); // Use placeholder since token is in HTTP-only cookie
+      } catch (error) {
+        console.error('Error parsing stored user data:', error);
+        cookieService.deleteCookie('user');
+      }
     }
 
     setLoading(false);
@@ -24,16 +31,16 @@ export const useAuth = () => {
     const result = await authService.login(email, password);
 
     if (result.success) {
-      const { user, accessToken } = result.data;
+      const { user } = result.data;
 
-      if (user && accessToken) {
-        // Save to localStorage first
-        localStorage.setItem('user', JSON.stringify(user));
-        localStorage.setItem('token', accessToken);
+      if (user) {
+        // The token is now set as an HTTP-only cookie by the backend
+        // We only need to store the user data in our client-side cookie
+        cookieService.setCookie('user', JSON.stringify(user), 7);
         
         // Update state synchronously
         setUser(user);
-        setToken(accessToken);
+        setToken('authenticated'); // Use placeholder since token is in HTTP-only cookie
         
         // Small delay to ensure state is updated
         await new Promise(resolve => setTimeout(resolve, 100));
@@ -66,8 +73,7 @@ export const useAuth = () => {
     await authService.logout();
     setUser(null);
     setToken(null);
-    localStorage.removeItem('user');
-    localStorage.removeItem('token');
+    cookieService.deleteCookie('user'); // Only clear user cookie, token is HTTP-only
     toast.success('Logged out successfully');
   };
 
