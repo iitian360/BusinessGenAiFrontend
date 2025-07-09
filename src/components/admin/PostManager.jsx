@@ -1,9 +1,14 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { FaHeart, FaRegHeart, FaPaperPlane, FaTrash, FaEdit } from 'react-icons/fa';
-import { getPosts, deletePost, createPost, updatePost, likePost, addComment, addReply } from '../../api/postAPI';
+import { usePosts } from '../../hooks/usePosts';
+import { postService } from '../../services/postService';
+import Card from '../ui/Card';
+import Button from '../ui/Button';
+import Modal from '../ui/Modal';
+import LoadingSpinner from '../ui/LoadingSpinner';
 
 const PostManager = () => {
-  const [posts, setPosts] = useState([]);
+  const { posts, setPosts, loading, likedPosts, handleLike, createPost, updatePost, deletePost, loadPosts } = usePosts();
   const [openDialog, setOpenDialog] = useState(false);
   const [editingPost, setEditingPost] = useState(null);
   const [formData, setFormData] = useState({ title: '', description: '', image: '' });
@@ -11,106 +16,14 @@ const PostManager = () => {
   const [replyInputs, setReplyInputs] = useState({});
   const [showReplies, setShowReplies] = useState({});
   const [openComments, setOpenComments] = useState({});
-  const [likedPosts, setLikedPosts] = useState(new Set());
 
-  useEffect(() => {
-    loadPosts();
-  }, []);
-
-  const loadPosts = async () => {
-    try {
-      const response = await getPosts();
-      const fetchedPosts = response.data.posts;
-      setPosts(fetchedPosts);
-
-      const commentsObj = {};
-      fetchedPosts.forEach(post => {
-        commentsObj[post._id] = '';
-      });
-      setComments(commentsObj);
-
-      const user = JSON.parse(localStorage.getItem('user'));
-      const likedSet = new Set();
-      fetchedPosts.forEach(post => {
-        if (user && post.likedBy.includes(user.id)) {
-          likedSet.add(post._id);
-        }
-      });
-      setLikedPosts(likedSet);
-    } catch (error) {
-      console.error('Error loading posts:', error);
-    }
-  };
-
-  const handleLike = async (postId) => {
-    try {
-      await likePost(postId);
-      const newLikedPosts = new Set(likedPosts);
-      if (likedPosts.has(postId)) {
-        newLikedPosts.delete(postId);
-      } else {
-        newLikedPosts.add(postId);
-      }
-      setLikedPosts(newLikedPosts);
-      setPosts(posts.map(post => post._id === postId ? {
-        ...post,
-        likes: newLikedPosts.has(postId) ? post.likes + 1 : post.likes - 1
-      } : post));
-    } catch (error) {
-      console.error('Error liking post:', error);
-    }
-  };
-
-  const toggleComments = (postId) => {
-    setOpenComments(prev => ({ ...prev, [postId]: !prev[postId] }));
-  };
-
-  const toggleReplies = (commentId) => {
-    setShowReplies(prev => ({ ...prev, [commentId]: !prev[commentId] }));
-  };
-
-  const handleCommentChange = (postId, value) => {
-    setComments({ ...comments, [postId]: value });
-  };
-
-  const handleCommentSubmit = async (postId) => {
-    const content = comments[postId];
-    if (!content.trim()) return;
-    try {
-      const response = await addComment(postId, content);
-      setPosts(posts.map(post => post._id === postId ? {
-        ...post,
-        comments: [...(post.comments || []), response.data.comment]
-      } : post));
-      setComments({ ...comments, [postId]: '' });
-      await loadPosts();
-    } catch (error) {
-      console.error('Error adding comment:', error);
-    }
-  };
-
-  const handleReplyInputChange = (commentId, value) => {
-    setReplyInputs(prev => ({ ...prev, [commentId]: value }));
-  };
-
-  const handleReplySubmit = async (commentId) => {
-    const content = replyInputs[commentId];
-    if (!content.trim()) return;
-    try {
-      const response = await addReply(commentId, content);
-      setPosts(prevPosts => prevPosts.map(post => ({
-        ...post,
-        comments: post.comments.map(comment =>
-          comment._id === commentId
-            ? { ...comment, replies: [...(comment.replies || []), response.data.reply] }
-            : comment
-        )
-      })));
-      setReplyInputs(prev => ({ ...prev, [commentId]: '' }));
-    } catch (error) {
-      console.error('Error submitting reply:', error);
-    }
-  };
+  React.useEffect(() => {
+    const commentsObj = {};
+    posts.forEach(post => {
+      commentsObj[post._id] = '';
+    });
+    setComments(commentsObj);
+  }, [posts]);
 
   const handleCreatePost = () => {
     setEditingPost(null);
@@ -130,34 +43,27 @@ const PostManager = () => {
 
   const handleDeletePost = async (postId) => {
     if (!window.confirm('Are you sure you want to delete this post?')) return;
-    try {
-      await deletePost(postId);
-      setPosts(posts.filter(p => p._id !== postId));
-    } catch (error) {
-      console.error('Error deleting post:', error);
-    }
+    await deletePost(postId);
   };
 
   const handleSubmit = async () => {
-    try {
-      const form = new FormData();
-      form.append('title', formData.title);
-      form.append('description', formData.description);
-      if (formData.image instanceof File) {
-        form.append('image', formData.image);
-      }
-      let response;
-      if (editingPost) {
-        response = await updatePost(editingPost._id, form);
-        setPosts(posts.map(post => post._id === editingPost._id ? response.post : post));
-      } else {
-        response = await createPost(form);
-        setPosts([response.post, ...posts]);
-      }
+    const form = new FormData();
+    form.append('title', formData.title);
+    form.append('description', formData.description);
+    if (formData.image instanceof File) {
+      form.append('image', formData.image);
+    }
+
+    let result;
+    if (editingPost) {
+      result = await updatePost(editingPost._id, form);
+    } else {
+      result = await createPost(form);
+    }
+
+    if (result.success) {
       setOpenDialog(false);
       setFormData({ title: '', description: '', image: '' });
-    } catch (error) {
-      console.error('Error saving post:', error);
     }
   };
 
@@ -172,38 +78,131 @@ const PostManager = () => {
     }
   };
 
+  // Comment and reply handlers (similar to ViewPosts)
+  const toggleComments = (postId) => {
+    setOpenComments(prev => ({ ...prev, [postId]: !prev[postId] }));
+  };
+
+  const toggleReplies = (commentId) => {
+    setShowReplies(prev => ({ ...prev, [commentId]: !prev[commentId] }));
+  };
+
+  const handleCommentChange = (postId, value) => {
+    setComments({ ...comments, [postId]: value });
+  };
+
+  const handleCommentSubmit = async (postId) => {
+    const content = comments[postId];
+    if (!content?.trim()) return;
+    
+    try {
+      const response = await postService.addComment(postId, content);
+      const newComment = response.data.comment || response.data;
+      
+      // Update posts state locally instead of reloading all posts
+      setPosts(prevPosts => 
+        prevPosts.map(post => 
+          post._id === postId 
+            ? { 
+                ...post, 
+                comments: [...(post.comments || []), {
+                  ...newComment,
+                  user: newComment.user || { name: 'You' } // Fallback for current user
+                }] 
+              }
+            : post
+        )
+      );
+      
+      setComments({ ...comments, [postId]: '' });
+    } catch (error) {
+      console.error('Error adding comment:', error);
+    }
+  };
+
+  const handleReplyInputChange = (commentId, value) => {
+    setReplyInputs(prev => ({ ...prev, [commentId]: value }));
+  };
+
+  const handleReplySubmit = async (commentId) => {
+    const content = replyInputs[commentId];
+    if (!content?.trim()) return;
+    
+    try {
+      const response = await postService.addReply(commentId, content);
+      const newReply = response.data.reply || response.data;
+      
+      // Update posts state locally instead of reloading all posts
+      setPosts(prevPosts => 
+        prevPosts.map(post => ({
+          ...post,
+          comments: post.comments?.map(comment => 
+            comment._id === commentId
+              ? { 
+                  ...comment, 
+                  replies: [...(comment.replies || []), {
+                    ...newReply,
+                    user: newReply.user || { name: 'You' } // Fallback for current user
+                  }] 
+                }
+              : comment
+          ) || []
+        }))
+      );
+      
+      setReplyInputs(prev => ({ ...prev, [commentId]: '' }));
+    } catch (error) {
+      console.error('Error submitting reply:', error);
+    }
+  };
+
+  if (loading) return <LoadingSpinner size="lg" />;
+
   return (
     <div className="p-4">
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-2xl font-bold">Post Management</h1>
-        <button className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-md shadow-sm" onClick={handleCreatePost}>
+        <Button onClick={handleCreatePost} variant="primary">
           + Create Post
-        </button>
+        </Button>
       </div>
 
       {posts.map((post) => (
-        <div key={post._id} className="bg-white postBox rounded-lg mb-6 overflow-hidden p-2">
+        <Card key={post._id} className="mb-6 postBox">
           {post.image?.url && (
             <img src={post.image.url} alt={post.title} className="w-full h-72 object-contain bg-gray-100 rounded" />
           )}
 
-          <div className="p-4">
+          <Card.Content>
             <div className="flex justify-between mb-2">
               <h3 className="text-xl font-semibold">{post.title}</h3>
               <div className="flex gap-3">
-                <button className="text-blue-500" onClick={() => handleEditPost(post)}><FaEdit /></button>
-                <button className="text-red-500" onClick={() => handleDeletePost(post._id)}><FaTrash /></button>
+                <Button variant="outline" size="sm" onClick={() => handleEditPost(post)}>
+                  <FaEdit />
+                </Button>
+                <Button variant="danger" size="sm" onClick={() => handleDeletePost(post._id)}>
+                  <FaTrash />
+                </Button>
               </div>
             </div>
             <p className="text-gray-700 mb-4">{post.description}</p>
 
             <div className="flex items-center gap-4 mb-4">
-              <button onClick={() => handleLike(post._id)} className={`flex items-center gap-2 px-3 py-1 rounded-md ${likedPosts.has(post._id) ? 'text-red-500' : 'text-black'}`}>
+              <Button
+                onClick={() => handleLike(post._id)}
+                variant="outline"
+                size="sm"
+                className={`flex items-center gap-2 ${likedPosts.has(post._id) ? 'text-red-500' : 'text-black'}`}
+              >
                 {likedPosts.has(post._id) ? <FaHeart /> : <FaRegHeart />} {post.likes} Likes
-              </button>
-              <button onClick={() => toggleComments(post._id)} className="px-3 py-1 border border-gray-300 rounded-full text-sm">
+              </Button>
+              <Button
+                onClick={() => toggleComments(post._id)}
+                variant="outline"
+                size="sm"
+              >
                 {post.comments?.length || 0} Comments
-              </button>
+              </Button>
             </div>
 
             <hr className="my-4" />
@@ -216,9 +215,14 @@ const PostManager = () => {
                     <p className="text-sm">{comment.content}</p>
                     <p className="text-xs text-gray-500">{new Date(comment.createdAt).toLocaleString()}</p>
 
-                    <button onClick={() => toggleReplies(comment._id)} className="text-sm text-blue-500 mt-1">
+                    <Button
+                      onClick={() => toggleReplies(comment._id)}
+                      variant="outline"
+                      size="sm"
+                      className="mt-1"
+                    >
                       {showReplies[comment._id] ? 'Hide Replies' : 'View Replies'}
-                    </button>
+                    </Button>
 
                     {showReplies[comment._id] && (
                       <div className="ml-4 mt-2">
@@ -243,9 +247,13 @@ const PostManager = () => {
                             }}
                             className="flex-grow px-2 py-1 border border-gray-300 rounded text-sm"
                           />
-                          <button onClick={() => handleReplySubmit(comment._id)} className="text-blue-600 px-2">
+                          <Button
+                            onClick={() => handleReplySubmit(comment._id)}
+                            size="sm"
+                            variant="primary"
+                          >
                             <FaPaperPlane />
-                          </button>
+                          </Button>
                         </div>
                       </div>
                     )}
@@ -266,67 +274,72 @@ const PostManager = () => {
                     }}
                     className="flex-grow px-3 py-2 border border-red-400 rounded-md text-sm"
                   />
-                  <button
+                  <Button
                     onClick={() => handleCommentSubmit(post._id)}
                     disabled={!comments[post._id]?.trim()}
-                    className="p-2 text-blue-500 disabled:opacity-50"
+                    variant="primary"
                   >
                     <FaPaperPlane />
-                  </button>
+                  </Button>
                 </div>
               </div>
             )}
-          </div>
-        </div>
+          </Card.Content>
+        </Card>
       ))}
 
-      {openDialog && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg shadow-lg max-w-xl w-full p-6 relative">
-            <h2 className="text-2xl font-bold mb-4">{editingPost ? 'Edit Post' : 'Create New Post'}</h2>
-            <input
-              type="text"
-              name="title"
-              placeholder="Title"
-              value={formData.title}
-              onChange={handleChange}
-              className="w-full border border-gray-300 rounded-md px-3 py-2 mb-4"
-              required
+      <Modal
+        isOpen={openDialog}
+        onClose={() => setOpenDialog(false)}
+        title={editingPost ? 'Edit Post' : 'Create New Post'}
+      >
+        <div className="space-y-4">
+          <input
+            type="text"
+            name="title"
+            placeholder="Title"
+            value={formData.title}
+            onChange={handleChange}
+            className="w-full border border-gray-300 rounded-md px-3 py-2"
+            required
+          />
+          <textarea
+            name="description"
+            placeholder="Description"
+            value={formData.description}
+            onChange={handleChange}
+            rows={4}
+            className="w-full border border-gray-300 rounded-md px-3 py-2"
+            required
+          />
+          <label className="block w-full cursor-pointer">
+            <span className="block text-center border border-gray-300 rounded-md px-3 py-2 bg-gray-50 hover:bg-gray-100">Upload Image</span>
+            <input type="file" accept="image/*" hidden onChange={handleImageUpload} />
+          </label>
+          {formData.image && (
+            <img
+              src={formData.image instanceof File ? URL.createObjectURL(formData.image) : formData.image}
+              alt="Preview"
+              className="w-full h-48 object-cover rounded-md"
             />
-            <textarea
-              name="description"
-              placeholder="Description"
-              value={formData.description}
-              onChange={handleChange}
-              rows={4}
-              className="w-full border border-gray-300 rounded-md px-3 py-2 mb-4"
-              required
-            />
-            <label className="block w-full cursor-pointer mb-4">
-              <span className="block text-center border border-gray-300 rounded-md px-3 py-2 bg-gray-50 hover:bg-gray-100">Upload Image</span>
-              <input type="file" accept="image/*" hidden onChange={handleImageUpload} />
-            </label>
-            {formData.image && (
-              <img
-                src={formData.image instanceof File ? URL.createObjectURL(formData.image) : formData.image}
-                alt="Preview"
-                className="w-full h-48 object-cover rounded-md mb-4"
-              />
-            )}
-            <div className="flex justify-end gap-3">
-              <button
-                onClick={() => setOpenDialog(false)}
-                className="px-4 py-2 border border-gray-300 rounded-md hover:bg-gray-100"
-              >Cancel</button>
-              <button
-                onClick={handleSubmit}
-                disabled={!formData.title || !formData.description}
-                className="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 disabled:opacity-50"
-              >{editingPost ? 'Update' : 'Create'}</button>
-            </div>
+          )}
+          <div className="flex justify-end gap-3">
+            <Button
+              onClick={() => setOpenDialog(false)}
+              variant="outline"
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handleSubmit}
+              disabled={!formData.title || !formData.description}
+              variant="primary"
+            >
+              {editingPost ? 'Update' : 'Create'}
+            </Button>
           </div>
         </div>
-      )}
+      </Modal>
     </div>
   );
 };

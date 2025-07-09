@@ -1,8 +1,11 @@
-import React, { useState } from 'react';
-import PostManager from '../components/admin/PostManager';
-import ComplaintManager from '../components/admin/ComplaintManager';
-import CommentManager from '../components/admin/CommentManager';
-import Analytics from '../components/admin/Analytics';
+import React, { Suspense, lazy, useState } from 'react';
+import LoadingSpinner from '../components/ui/LoadingSpinner';
+
+// Lazy load components
+const PostManager = lazy(() => import('../components/admin/PostManager'));
+const ComplaintManager = lazy(() => import('../components/admin/ComplaintManager'));
+const CommentManager = lazy(() => import('../components/admin/CommentManager'));
+const Analytics = lazy(() => import('../components/admin/Analytics'));
 
 const TABS = [
   { label: 'Posts', icon: '📝' },
@@ -16,7 +19,11 @@ const AdminDashboard = () => {
 
   const TabPanel = ({ children, value, index }) => (
     <div className={`${value !== index ? 'hidden' : ''} py-6`}>
-      {value === index && children}
+      {value === index && (
+        <Suspense fallback={<LoadingSpinner size="lg" />}>
+          {children}
+        </Suspense>
+      )}
     </div>
   );
 

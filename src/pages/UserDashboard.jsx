@@ -1,7 +1,10 @@
-import React, { useState } from 'react';
-import ViewPosts from '../components/user/ViewPosts';
-import RaiseComplaint from '../components/user/RaiseComplaint';
-import MyComplaints from '../components/user/MyComplaints';
+import React, { Suspense, lazy, useState } from 'react';
+import LoadingSpinner from '../components/ui/LoadingSpinner';
+
+// Lazy load components
+const ViewPosts = lazy(() => import('../components/user/ViewPosts'));
+const RaiseComplaint = lazy(() => import('../components/user/RaiseComplaint'));
+const MyComplaints = lazy(() => import('../components/user/MyComplaints'));
 
 const TABS = [
   { label: 'View Posts', icon: '📝' },
@@ -14,7 +17,11 @@ const UserDashboard = () => {
 
   const TabPanel = ({ children, value, index }) => (
     <div className={`${value !== index ? 'hidden' : ''} py-6`}>
-      {value === index && children}
+      {value === index && (
+        <Suspense fallback={<LoadingSpinner size="lg" />}>
+          {children}
+        </Suspense>
+      )}
     </div>
   );
 

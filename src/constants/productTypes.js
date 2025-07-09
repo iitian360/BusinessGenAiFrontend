@@ -1,5 +1,4 @@
-
-export const productTypes = [
+export const PRODUCT_TYPES = [
   'Electronics',
   'Clothing',
   'Home & Garden',
